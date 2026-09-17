@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "suruchi-web",
+      "runtimeExecutable": "C:\\Suruchi\\run-web.bat",
+      "runtimeArgs": [],
+      "port": 8765
+    }
+  ]
+}
