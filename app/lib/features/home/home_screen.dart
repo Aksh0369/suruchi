@@ -8,6 +8,7 @@ import '../../shared/widgets/category_card.dart';
 import '../reminders/add_edit_reminder_sheet.dart';
 import '../reminders/category_list_screen.dart';
 import '../reminders/reminder_providers.dart';
+import '../settings/settings_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -65,7 +66,21 @@ class HomeScreen extends ConsumerWidget {
             return ListView(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
               children: [
-                Text(_greeting, style: Theme.of(context).textTheme.headlineMedium),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(_greeting, style: Theme.of(context).textTheme.headlineMedium),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                      ),
+                      icon: const Icon(Icons.settings_outlined),
+                      tooltip: 'Settings',
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 4),
                 Text(
                   _today,

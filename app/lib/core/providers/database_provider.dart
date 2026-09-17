@@ -2,6 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/repositories/reminder_repository.dart';
+import '../../data/repositories/settings_repository.dart';
 
 part 'database_provider.g.dart';
 
@@ -15,4 +16,9 @@ AppDatabase appDatabase(Ref ref) {
 @Riverpod(keepAlive: true)
 ReminderRepository reminderRepository(Ref ref) {
   return ReminderRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+SettingsRepository settingsRepository(Ref ref) {
+  return SettingsRepository(ref.watch(appDatabaseProvider));
 }

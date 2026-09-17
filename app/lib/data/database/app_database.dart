@@ -34,12 +34,33 @@ class Reminders extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Reminders])
+/// Small device-local key/value store — theme mode, language, notification
+/// defaults. Deliberately separate from [Reminders]: this never syncs to
+/// the cloud backend, it's per-device.
+class AppSettings extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {key};
+}
+
+@DriftDatabase(tables: [Reminders, AppSettings])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.createTable(appSettings);
+      }
+    },
+  );
 
   static QueryExecutor _openConnection() {
     return driftDatabase(
