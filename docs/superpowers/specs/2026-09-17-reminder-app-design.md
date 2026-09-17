@@ -1,4 +1,6 @@
-# Personal Reminder App — V1 Design
+# Suruchi — Personal Reminder App V1 Design
+
+App name: **Suruchi**. Android package id: `com.suruchi.app`.
 
 Private Android reminder app for two people (owner + spouse), each on their
 own phone, with reminders synced through a small cloud backend. Not published
