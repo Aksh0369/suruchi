@@ -215,6 +215,9 @@ Each phase must build/compile before the next starts.
 
 ## Open items pending user input
 
-- Flutter + Android SDK installation on this machine (in progress)
-- Neon Postgres project + `DATABASE_URL` for the backend (pending)
-- GitHub repository to push to (pending — name/account needed)
+- ~~Flutter + Android SDK installation on this machine~~ — done: Flutter
+  3.47.4, JDK 17, Android SDK (platforms 35/36, build-tools) all installed
+  and verified with a real `flutter build apk --debug`.
+- ~~GitHub repository~~ — done: https://github.com/Aksh0369/suruchi
+- Neon Postgres project + `DATABASE_URL` for the backend (pending — backend
+  runs fine against a local Postgres in the meantime)
