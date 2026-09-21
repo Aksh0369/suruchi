@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/database_provider.dart';
 import '../../core/providers/theme_provider.dart';
+import '../../domain/entities/reminder.dart';
+import '../../domain/entities/reminder_category.dart';
+import '../reminders/wake_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -48,6 +51,26 @@ class SettingsScreen extends ConsumerWidget {
                 ],
               ),
             ),
+          ),
+          const SizedBox(height: 28),
+          Text('ADVANCED', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.alarm_rounded),
+            title: const Text('Preview alarm wake screen'),
+            subtitle: const Text('Not a real alarm yet — just the design'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () {
+              final repo = ref.read(reminderRepositoryProvider);
+              final sample = repo.buildDraft(ReminderCategory.business).copyWith(
+                title: 'Prepare monthly report',
+                type: ReminderType.alarm,
+              );
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => WakeScreen(reminder: sample)),
+              );
+            },
           ),
         ],
       ),
