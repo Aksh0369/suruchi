@@ -5,9 +5,9 @@ import '../../core/providers/database_provider.dart';
 import '../../domain/entities/reminder.dart';
 import '../../domain/entities/reminder_category.dart';
 
-/// The reminder create/edit form fields — shared by the quick bottom sheet
-/// and the full-page Add Reminder screen, so both stay in sync with one
-/// implementation. Saving pops the current route either way.
+/// The task create/edit form fields — shared by every place a task can be
+/// added or edited, so there's one implementation instead of several
+/// screens drifting apart. Saving pops the current route.
 class ReminderForm extends ConsumerStatefulWidget {
   const ReminderForm({super.key, required this.category, this.existing});
 
@@ -21,10 +21,11 @@ class ReminderForm extends ConsumerStatefulWidget {
 class _ReminderFormState extends ConsumerState<ReminderForm> {
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
+  late ScheduleMode _scheduleMode;
   late DateTime _scheduledAt;
-  late RepeatRule _repeatRule;
+  late int _timesPerWeek;
+  late TimeOfDay _preferredTime;
   late ReminderPriority _priority;
-  bool _moreOptionsOpen = false;
   bool _saving = false;
 
   bool get _isEditing => widget.existing != null;
@@ -35,12 +36,19 @@ class _ReminderFormState extends ConsumerState<ReminderForm> {
     final existing = widget.existing;
     _titleController = TextEditingController(text: existing?.title ?? '');
     _descriptionController = TextEditingController(text: existing?.description ?? '');
-    _scheduledAt = existing?.scheduledAt ?? _defaultTime();
-    _repeatRule = existing?.repeatRule ?? RepeatRule.none;
+    _scheduleMode = existing?.scheduleMode ?? ScheduleMode.deadline;
+    _scheduledAt = existing?.scheduledAt ?? _defaultDeadline();
+    _timesPerWeek = existing?.timesPerWeek ?? 3;
+    _preferredTime = existing?.preferredTimeMinutes != null
+        ? TimeOfDay(
+            hour: existing!.preferredTimeMinutes! ~/ 60,
+            minute: existing.preferredTimeMinutes! % 60,
+          )
+        : const TimeOfDay(hour: 18, minute: 0);
     _priority = existing?.priority ?? ReminderPriority.normal;
   }
 
-  DateTime _defaultTime() {
+  DateTime _defaultDeadline() {
     final now = DateTime.now();
     return DateTime(now.year, now.month, now.day, now.hour + 1);
   }
@@ -78,6 +86,12 @@ class _ReminderFormState extends ConsumerState<ReminderForm> {
     });
   }
 
+  Future<void> _pickPreferredTime() async {
+    final picked = await showTimePicker(context: context, initialTime: _preferredTime);
+    if (picked == null) return;
+    setState(() => _preferredTime = picked);
+  }
+
   Future<void> _save() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) return;
@@ -91,8 +105,12 @@ class _ReminderFormState extends ConsumerState<ReminderForm> {
       description: _descriptionController.text.trim().isEmpty
           ? null
           : _descriptionController.text.trim(),
-      scheduledAt: _scheduledAt,
-      repeatRule: _repeatRule,
+      scheduleMode: _scheduleMode,
+      scheduledAt: _scheduleMode == ScheduleMode.deadline ? _scheduledAt : null,
+      timesPerWeek: _scheduleMode == ScheduleMode.recurring ? _timesPerWeek : null,
+      preferredTimeMinutes: _scheduleMode == ScheduleMode.recurring
+          ? _preferredTime.hour * 60 + _preferredTime.minute
+          : null,
       priority: _priority,
       updatedAt: DateTime.now(),
     );
@@ -104,6 +122,7 @@ class _ReminderFormState extends ConsumerState<ReminderForm> {
   @override
   Widget build(BuildContext context) {
     final category = widget.category;
+    final scheme = Theme.of(context).colorScheme;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -122,70 +141,144 @@ class _ReminderFormState extends ConsumerState<ReminderForm> {
           autofocus: !_isEditing,
           textCapitalization: TextCapitalization.sentences,
           decoration: const InputDecoration(
-            hintText: 'What do you want to remember?',
+            hintText: 'What do you want to do?',
             border: OutlineInputBorder(),
           ),
-          onSubmitted: (_) => _save(),
+        ),
+        const SizedBox(height: 18),
+        Text('Remind me how?', style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: 8),
+        _ModeToggle(
+          selected: _scheduleMode,
+          onChanged: (value) => setState(() => _scheduleMode = value),
         ),
         const SizedBox(height: 14),
-        Text('When?', style: Theme.of(context).textTheme.labelLarge),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            _PillButton(label: _formatDate(_scheduledAt), onTap: _pickDate),
-            const SizedBox(width: 10),
-            _PillButton(label: _formatTime(_scheduledAt), onTap: _pickTime),
-          ],
-        ),
-        const SizedBox(height: 14),
-        Text('Repeat?', style: Theme.of(context).textTheme.labelLarge),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<RepeatRule>(
-          initialValue: _repeatRule,
-          decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
-          items: const [
-            DropdownMenuItem(value: RepeatRule.none, child: Text('Never')),
-            DropdownMenuItem(value: RepeatRule.daily, child: Text('Every day')),
-            DropdownMenuItem(value: RepeatRule.weekly, child: Text('Every week')),
-          ],
-          onChanged: (value) => setState(() => _repeatRule = value ?? RepeatRule.none),
-        ),
-        const SizedBox(height: 8),
-        TextButton.icon(
-          onPressed: () => setState(() => _moreOptionsOpen = !_moreOptionsOpen),
-          icon: Icon(_moreOptionsOpen ? Icons.expand_less_rounded : Icons.expand_more_rounded),
-          label: Text(_moreOptionsOpen ? 'Fewer options' : 'More options'),
-        ),
-        if (_moreOptionsOpen) ...[
-          TextField(
-            controller: _descriptionController,
-            textCapitalization: TextCapitalization.sentences,
-            minLines: 2,
-            maxLines: 4,
-            decoration: const InputDecoration(
-              labelText: 'Description',
-              border: OutlineInputBorder(),
+        switch (_scheduleMode) {
+          ScheduleMode.deadline => _DeadlineFields(
+              scheduledAt: _scheduledAt,
+              onPickDate: _pickDate,
+              onPickTime: _pickTime,
             ),
+          ScheduleMode.recurring => _RecurringFields(
+              timesPerWeek: _timesPerWeek,
+              preferredTime: _preferredTime,
+              onTimesPerWeekChanged: (v) => setState(() => _timesPerWeek = v),
+              onPickPreferredTime: _pickPreferredTime,
+            ),
+          ScheduleMode.random => Text(
+              'We\'ll remind you once a week, on a random day and time, '
+              'until this is done.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+        },
+        const SizedBox(height: 18),
+        TextField(
+          controller: _descriptionController,
+          textCapitalization: TextCapitalization.sentences,
+          minLines: 2,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            labelText: 'Description (optional)',
+            border: OutlineInputBorder(),
           ),
-          const SizedBox(height: 14),
-          Text('Priority', style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 8),
-          SegmentedButton<ReminderPriority>(
-            segments: const [
-              ButtonSegment(value: ReminderPriority.low, label: Text('Low')),
-              ButtonSegment(value: ReminderPriority.normal, label: Text('Normal')),
-              ButtonSegment(value: ReminderPriority.high, label: Text('High')),
-            ],
-            selected: {_priority},
-            onSelectionChanged: (s) => setState(() => _priority = s.first),
-          ),
-        ],
+        ),
+        const SizedBox(height: 14),
+        Text('Priority', style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: 8),
+        _PriorityToggle(
+          selected: _priority,
+          onChanged: (value) => setState(() => _priority = value),
+        ),
         const SizedBox(height: 20),
         SizedBox(
           width: double.infinity,
           child: FilledButton(
             onPressed: _saving ? null : _save,
-            child: Text(_isEditing ? 'SAVE CHANGES' : 'CREATE REMINDER'),
+            child: Text(_isEditing ? 'SAVE TASK' : 'CREATE TASK'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DeadlineFields extends StatelessWidget {
+  const _DeadlineFields({
+    required this.scheduledAt,
+    required this.onPickDate,
+    required this.onPickTime,
+  });
+
+  final DateTime scheduledAt;
+  final VoidCallback onPickDate;
+  final VoidCallback onPickTime;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Finish by', style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            _PillButton(label: _formatDate(scheduledAt), onTap: onPickDate),
+            const SizedBox(width: 10),
+            _PillButton(label: _formatTime(scheduledAt), onTap: onPickTime),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'We\'ll remind you 1hr before, 30min before, at the time, and 30min after.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RecurringFields extends StatelessWidget {
+  const _RecurringFields({
+    required this.timesPerWeek,
+    required this.preferredTime,
+    required this.onTimesPerWeekChanged,
+    required this.onPickPreferredTime,
+  });
+
+  final int timesPerWeek;
+  final TimeOfDay preferredTime;
+  final ValueChanged<int> onTimesPerWeekChanged;
+  final VoidCallback onPickPreferredTime;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('How many times a week?', style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<int>(
+          initialValue: timesPerWeek,
+          decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+          items: [
+            for (var n = 1; n <= 7; n++)
+              DropdownMenuItem(value: n, child: Text(n == 7 ? 'Every day' : '$n time${n > 1 ? 's' : ''} a week')),
+          ],
+          onChanged: (value) => onTimesPerWeekChanged(value ?? timesPerWeek),
+        ),
+        const SizedBox(height: 14),
+        Text('What time of day?', style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: 8),
+        _PillButton(label: preferredTime.format(context), onTap: onPickPreferredTime),
+        const SizedBox(height: 8),
+        Text(
+          'We\'ll pick which days automatically.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
       ],
@@ -202,6 +295,97 @@ class _PillButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return OutlinedButton(onPressed: onTap, child: Text(label));
+  }
+}
+
+/// Full-width, equal-width toggle where selection is shown purely by
+/// filling the selected segment's background — used for both the schedule
+/// mode picker and the priority picker so they read as one visual language.
+class _SegmentedToggle<T> extends StatelessWidget {
+  const _SegmentedToggle({required this.options, required this.selected, required this.onChanged});
+
+  final List<(T value, String label)> options;
+  final T selected;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: scheme.outlineVariant),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.all(3),
+      child: Row(
+        children: [
+          for (final option in options)
+            Expanded(
+              child: GestureDetector(
+                onTap: () => onChanged(option.$1),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  height: 44,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: selected == option.$1 ? scheme.primary : Colors.transparent,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Text(
+                    option.$2,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: selected == option.$1 ? scheme.onPrimary : scheme.onSurface,
+                      fontWeight: selected == option.$1 ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModeToggle extends StatelessWidget {
+  const _ModeToggle({required this.selected, required this.onChanged});
+
+  final ScheduleMode selected;
+  final ValueChanged<ScheduleMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SegmentedToggle<ScheduleMode>(
+      selected: selected,
+      onChanged: onChanged,
+      options: const [
+        (ScheduleMode.deadline, 'Deadline'),
+        (ScheduleMode.recurring, 'Recurring'),
+        (ScheduleMode.random, 'Random'),
+      ],
+    );
+  }
+}
+
+class _PriorityToggle extends StatelessWidget {
+  const _PriorityToggle({required this.selected, required this.onChanged});
+
+  final ReminderPriority selected;
+  final ValueChanged<ReminderPriority> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SegmentedToggle<ReminderPriority>(
+      selected: selected,
+      onChanged: onChanged,
+      options: const [
+        (ReminderPriority.low, 'Low'),
+        (ReminderPriority.normal, 'Normal'),
+        (ReminderPriority.high, 'High'),
+      ],
+    );
   }
 }
 

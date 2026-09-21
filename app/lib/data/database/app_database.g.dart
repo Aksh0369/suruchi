@@ -63,6 +63,18 @@ class $RemindersTable extends Reminders
     requiredDuringInsert: false,
     defaultValue: const Constant('normal'),
   );
+  static const VerificationMeta _scheduleModeMeta = const VerificationMeta(
+    'scheduleMode',
+  );
+  @override
+  late final GeneratedColumn<String> scheduleMode = GeneratedColumn<String>(
+    'schedule_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('deadline'),
+  );
   static const VerificationMeta _scheduledAtMeta = const VerificationMeta(
     'scheduledAt',
   );
@@ -70,42 +82,29 @@ class $RemindersTable extends Reminders
   late final GeneratedColumn<DateTime> scheduledAt = GeneratedColumn<DateTime>(
     'scheduled_at',
     aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _repeatRuleMeta = const VerificationMeta(
-    'repeatRule',
-  );
-  @override
-  late final GeneratedColumn<String> repeatRule = GeneratedColumn<String>(
-    'repeat_rule',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultValue: const Constant('none'),
-  );
-  static const VerificationMeta _repeatDaysMeta = const VerificationMeta(
-    'repeatDays',
-  );
-  @override
-  late final GeneratedColumn<String> repeatDays = GeneratedColumn<String>(
-    'repeat_days',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _endDateMeta = const VerificationMeta(
-    'endDate',
-  );
-  @override
-  late final GeneratedColumn<DateTime> endDate = GeneratedColumn<DateTime>(
-    'end_date',
-    aliasedName,
     true,
     type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _timesPerWeekMeta = const VerificationMeta(
+    'timesPerWeek',
+  );
+  @override
+  late final GeneratedColumn<int> timesPerWeek = GeneratedColumn<int>(
+    'times_per_week',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _preferredTimeMinutesMeta =
+      const VerificationMeta('preferredTimeMinutes');
+  @override
+  late final GeneratedColumn<int> preferredTimeMinutes = GeneratedColumn<int>(
+    'preferred_time_minutes',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _priorityMeta = const VerificationMeta(
@@ -213,10 +212,10 @@ class $RemindersTable extends Reminders
     description,
     category,
     type,
+    scheduleMode,
     scheduledAt,
-    repeatRule,
-    repeatDays,
-    endDate,
+    timesPerWeek,
+    preferredTimeMinutes,
     priority,
     soundId,
     vibrationEnabled,
@@ -274,6 +273,15 @@ class $RemindersTable extends Reminders
         type.isAcceptableOrUnknown(data['type']!, _typeMeta),
       );
     }
+    if (data.containsKey('schedule_mode')) {
+      context.handle(
+        _scheduleModeMeta,
+        scheduleMode.isAcceptableOrUnknown(
+          data['schedule_mode']!,
+          _scheduleModeMeta,
+        ),
+      );
+    }
     if (data.containsKey('scheduled_at')) {
       context.handle(
         _scheduledAtMeta,
@@ -282,25 +290,23 @@ class $RemindersTable extends Reminders
           _scheduledAtMeta,
         ),
       );
-    } else if (isInserting) {
-      context.missing(_scheduledAtMeta);
     }
-    if (data.containsKey('repeat_rule')) {
+    if (data.containsKey('times_per_week')) {
       context.handle(
-        _repeatRuleMeta,
-        repeatRule.isAcceptableOrUnknown(data['repeat_rule']!, _repeatRuleMeta),
+        _timesPerWeekMeta,
+        timesPerWeek.isAcceptableOrUnknown(
+          data['times_per_week']!,
+          _timesPerWeekMeta,
+        ),
       );
     }
-    if (data.containsKey('repeat_days')) {
+    if (data.containsKey('preferred_time_minutes')) {
       context.handle(
-        _repeatDaysMeta,
-        repeatDays.isAcceptableOrUnknown(data['repeat_days']!, _repeatDaysMeta),
-      );
-    }
-    if (data.containsKey('end_date')) {
-      context.handle(
-        _endDateMeta,
-        endDate.isAcceptableOrUnknown(data['end_date']!, _endDateMeta),
+        _preferredTimeMinutesMeta,
+        preferredTimeMinutes.isAcceptableOrUnknown(
+          data['preferred_time_minutes']!,
+          _preferredTimeMinutesMeta,
+        ),
       );
     }
     if (data.containsKey('priority')) {
@@ -396,21 +402,21 @@ class $RemindersTable extends Reminders
         DriftSqlType.string,
         data['${effectivePrefix}type'],
       )!,
+      scheduleMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}schedule_mode'],
+      )!,
       scheduledAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}scheduled_at'],
-      )!,
-      repeatRule: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}repeat_rule'],
-      )!,
-      repeatDays: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}repeat_days'],
       ),
-      endDate: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}end_date'],
+      timesPerWeek: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}times_per_week'],
+      ),
+      preferredTimeMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}preferred_time_minutes'],
       ),
       priority: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -459,10 +465,10 @@ class ReminderRow extends DataClass implements Insertable<ReminderRow> {
   final String? description;
   final String category;
   final String type;
-  final DateTime scheduledAt;
-  final String repeatRule;
-  final String? repeatDays;
-  final DateTime? endDate;
+  final String scheduleMode;
+  final DateTime? scheduledAt;
+  final int? timesPerWeek;
+  final int? preferredTimeMinutes;
   final String priority;
   final String? soundId;
   final bool vibrationEnabled;
@@ -477,10 +483,10 @@ class ReminderRow extends DataClass implements Insertable<ReminderRow> {
     this.description,
     required this.category,
     required this.type,
-    required this.scheduledAt,
-    required this.repeatRule,
-    this.repeatDays,
-    this.endDate,
+    required this.scheduleMode,
+    this.scheduledAt,
+    this.timesPerWeek,
+    this.preferredTimeMinutes,
     required this.priority,
     this.soundId,
     required this.vibrationEnabled,
@@ -500,13 +506,15 @@ class ReminderRow extends DataClass implements Insertable<ReminderRow> {
     }
     map['category'] = Variable<String>(category);
     map['type'] = Variable<String>(type);
-    map['scheduled_at'] = Variable<DateTime>(scheduledAt);
-    map['repeat_rule'] = Variable<String>(repeatRule);
-    if (!nullToAbsent || repeatDays != null) {
-      map['repeat_days'] = Variable<String>(repeatDays);
+    map['schedule_mode'] = Variable<String>(scheduleMode);
+    if (!nullToAbsent || scheduledAt != null) {
+      map['scheduled_at'] = Variable<DateTime>(scheduledAt);
     }
-    if (!nullToAbsent || endDate != null) {
-      map['end_date'] = Variable<DateTime>(endDate);
+    if (!nullToAbsent || timesPerWeek != null) {
+      map['times_per_week'] = Variable<int>(timesPerWeek);
+    }
+    if (!nullToAbsent || preferredTimeMinutes != null) {
+      map['preferred_time_minutes'] = Variable<int>(preferredTimeMinutes);
     }
     map['priority'] = Variable<String>(priority);
     if (!nullToAbsent || soundId != null) {
@@ -532,14 +540,16 @@ class ReminderRow extends DataClass implements Insertable<ReminderRow> {
           : Value(description),
       category: Value(category),
       type: Value(type),
-      scheduledAt: Value(scheduledAt),
-      repeatRule: Value(repeatRule),
-      repeatDays: repeatDays == null && nullToAbsent
+      scheduleMode: Value(scheduleMode),
+      scheduledAt: scheduledAt == null && nullToAbsent
           ? const Value.absent()
-          : Value(repeatDays),
-      endDate: endDate == null && nullToAbsent
+          : Value(scheduledAt),
+      timesPerWeek: timesPerWeek == null && nullToAbsent
           ? const Value.absent()
-          : Value(endDate),
+          : Value(timesPerWeek),
+      preferredTimeMinutes: preferredTimeMinutes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(preferredTimeMinutes),
       priority: Value(priority),
       soundId: soundId == null && nullToAbsent
           ? const Value.absent()
@@ -566,10 +576,12 @@ class ReminderRow extends DataClass implements Insertable<ReminderRow> {
       description: serializer.fromJson<String?>(json['description']),
       category: serializer.fromJson<String>(json['category']),
       type: serializer.fromJson<String>(json['type']),
-      scheduledAt: serializer.fromJson<DateTime>(json['scheduledAt']),
-      repeatRule: serializer.fromJson<String>(json['repeatRule']),
-      repeatDays: serializer.fromJson<String?>(json['repeatDays']),
-      endDate: serializer.fromJson<DateTime?>(json['endDate']),
+      scheduleMode: serializer.fromJson<String>(json['scheduleMode']),
+      scheduledAt: serializer.fromJson<DateTime?>(json['scheduledAt']),
+      timesPerWeek: serializer.fromJson<int?>(json['timesPerWeek']),
+      preferredTimeMinutes: serializer.fromJson<int?>(
+        json['preferredTimeMinutes'],
+      ),
       priority: serializer.fromJson<String>(json['priority']),
       soundId: serializer.fromJson<String?>(json['soundId']),
       vibrationEnabled: serializer.fromJson<bool>(json['vibrationEnabled']),
@@ -589,10 +601,10 @@ class ReminderRow extends DataClass implements Insertable<ReminderRow> {
       'description': serializer.toJson<String?>(description),
       'category': serializer.toJson<String>(category),
       'type': serializer.toJson<String>(type),
-      'scheduledAt': serializer.toJson<DateTime>(scheduledAt),
-      'repeatRule': serializer.toJson<String>(repeatRule),
-      'repeatDays': serializer.toJson<String?>(repeatDays),
-      'endDate': serializer.toJson<DateTime?>(endDate),
+      'scheduleMode': serializer.toJson<String>(scheduleMode),
+      'scheduledAt': serializer.toJson<DateTime?>(scheduledAt),
+      'timesPerWeek': serializer.toJson<int?>(timesPerWeek),
+      'preferredTimeMinutes': serializer.toJson<int?>(preferredTimeMinutes),
       'priority': serializer.toJson<String>(priority),
       'soundId': serializer.toJson<String?>(soundId),
       'vibrationEnabled': serializer.toJson<bool>(vibrationEnabled),
@@ -610,10 +622,10 @@ class ReminderRow extends DataClass implements Insertable<ReminderRow> {
     Value<String?> description = const Value.absent(),
     String? category,
     String? type,
-    DateTime? scheduledAt,
-    String? repeatRule,
-    Value<String?> repeatDays = const Value.absent(),
-    Value<DateTime?> endDate = const Value.absent(),
+    String? scheduleMode,
+    Value<DateTime?> scheduledAt = const Value.absent(),
+    Value<int?> timesPerWeek = const Value.absent(),
+    Value<int?> preferredTimeMinutes = const Value.absent(),
     String? priority,
     Value<String?> soundId = const Value.absent(),
     bool? vibrationEnabled,
@@ -628,10 +640,12 @@ class ReminderRow extends DataClass implements Insertable<ReminderRow> {
     description: description.present ? description.value : this.description,
     category: category ?? this.category,
     type: type ?? this.type,
-    scheduledAt: scheduledAt ?? this.scheduledAt,
-    repeatRule: repeatRule ?? this.repeatRule,
-    repeatDays: repeatDays.present ? repeatDays.value : this.repeatDays,
-    endDate: endDate.present ? endDate.value : this.endDate,
+    scheduleMode: scheduleMode ?? this.scheduleMode,
+    scheduledAt: scheduledAt.present ? scheduledAt.value : this.scheduledAt,
+    timesPerWeek: timesPerWeek.present ? timesPerWeek.value : this.timesPerWeek,
+    preferredTimeMinutes: preferredTimeMinutes.present
+        ? preferredTimeMinutes.value
+        : this.preferredTimeMinutes,
     priority: priority ?? this.priority,
     soundId: soundId.present ? soundId.value : this.soundId,
     vibrationEnabled: vibrationEnabled ?? this.vibrationEnabled,
@@ -650,16 +664,18 @@ class ReminderRow extends DataClass implements Insertable<ReminderRow> {
           : this.description,
       category: data.category.present ? data.category.value : this.category,
       type: data.type.present ? data.type.value : this.type,
+      scheduleMode: data.scheduleMode.present
+          ? data.scheduleMode.value
+          : this.scheduleMode,
       scheduledAt: data.scheduledAt.present
           ? data.scheduledAt.value
           : this.scheduledAt,
-      repeatRule: data.repeatRule.present
-          ? data.repeatRule.value
-          : this.repeatRule,
-      repeatDays: data.repeatDays.present
-          ? data.repeatDays.value
-          : this.repeatDays,
-      endDate: data.endDate.present ? data.endDate.value : this.endDate,
+      timesPerWeek: data.timesPerWeek.present
+          ? data.timesPerWeek.value
+          : this.timesPerWeek,
+      preferredTimeMinutes: data.preferredTimeMinutes.present
+          ? data.preferredTimeMinutes.value
+          : this.preferredTimeMinutes,
       priority: data.priority.present ? data.priority.value : this.priority,
       soundId: data.soundId.present ? data.soundId.value : this.soundId,
       vibrationEnabled: data.vibrationEnabled.present
@@ -687,10 +703,10 @@ class ReminderRow extends DataClass implements Insertable<ReminderRow> {
           ..write('description: $description, ')
           ..write('category: $category, ')
           ..write('type: $type, ')
+          ..write('scheduleMode: $scheduleMode, ')
           ..write('scheduledAt: $scheduledAt, ')
-          ..write('repeatRule: $repeatRule, ')
-          ..write('repeatDays: $repeatDays, ')
-          ..write('endDate: $endDate, ')
+          ..write('timesPerWeek: $timesPerWeek, ')
+          ..write('preferredTimeMinutes: $preferredTimeMinutes, ')
           ..write('priority: $priority, ')
           ..write('soundId: $soundId, ')
           ..write('vibrationEnabled: $vibrationEnabled, ')
@@ -710,10 +726,10 @@ class ReminderRow extends DataClass implements Insertable<ReminderRow> {
     description,
     category,
     type,
+    scheduleMode,
     scheduledAt,
-    repeatRule,
-    repeatDays,
-    endDate,
+    timesPerWeek,
+    preferredTimeMinutes,
     priority,
     soundId,
     vibrationEnabled,
@@ -732,10 +748,10 @@ class ReminderRow extends DataClass implements Insertable<ReminderRow> {
           other.description == this.description &&
           other.category == this.category &&
           other.type == this.type &&
+          other.scheduleMode == this.scheduleMode &&
           other.scheduledAt == this.scheduledAt &&
-          other.repeatRule == this.repeatRule &&
-          other.repeatDays == this.repeatDays &&
-          other.endDate == this.endDate &&
+          other.timesPerWeek == this.timesPerWeek &&
+          other.preferredTimeMinutes == this.preferredTimeMinutes &&
           other.priority == this.priority &&
           other.soundId == this.soundId &&
           other.vibrationEnabled == this.vibrationEnabled &&
@@ -752,10 +768,10 @@ class RemindersCompanion extends UpdateCompanion<ReminderRow> {
   final Value<String?> description;
   final Value<String> category;
   final Value<String> type;
-  final Value<DateTime> scheduledAt;
-  final Value<String> repeatRule;
-  final Value<String?> repeatDays;
-  final Value<DateTime?> endDate;
+  final Value<String> scheduleMode;
+  final Value<DateTime?> scheduledAt;
+  final Value<int?> timesPerWeek;
+  final Value<int?> preferredTimeMinutes;
   final Value<String> priority;
   final Value<String?> soundId;
   final Value<bool> vibrationEnabled;
@@ -771,10 +787,10 @@ class RemindersCompanion extends UpdateCompanion<ReminderRow> {
     this.description = const Value.absent(),
     this.category = const Value.absent(),
     this.type = const Value.absent(),
+    this.scheduleMode = const Value.absent(),
     this.scheduledAt = const Value.absent(),
-    this.repeatRule = const Value.absent(),
-    this.repeatDays = const Value.absent(),
-    this.endDate = const Value.absent(),
+    this.timesPerWeek = const Value.absent(),
+    this.preferredTimeMinutes = const Value.absent(),
     this.priority = const Value.absent(),
     this.soundId = const Value.absent(),
     this.vibrationEnabled = const Value.absent(),
@@ -791,10 +807,10 @@ class RemindersCompanion extends UpdateCompanion<ReminderRow> {
     this.description = const Value.absent(),
     required String category,
     this.type = const Value.absent(),
-    required DateTime scheduledAt,
-    this.repeatRule = const Value.absent(),
-    this.repeatDays = const Value.absent(),
-    this.endDate = const Value.absent(),
+    this.scheduleMode = const Value.absent(),
+    this.scheduledAt = const Value.absent(),
+    this.timesPerWeek = const Value.absent(),
+    this.preferredTimeMinutes = const Value.absent(),
     this.priority = const Value.absent(),
     this.soundId = const Value.absent(),
     this.vibrationEnabled = const Value.absent(),
@@ -807,7 +823,6 @@ class RemindersCompanion extends UpdateCompanion<ReminderRow> {
   }) : id = Value(id),
        title = Value(title),
        category = Value(category),
-       scheduledAt = Value(scheduledAt),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
   static Insertable<ReminderRow> custom({
@@ -816,10 +831,10 @@ class RemindersCompanion extends UpdateCompanion<ReminderRow> {
     Expression<String>? description,
     Expression<String>? category,
     Expression<String>? type,
+    Expression<String>? scheduleMode,
     Expression<DateTime>? scheduledAt,
-    Expression<String>? repeatRule,
-    Expression<String>? repeatDays,
-    Expression<DateTime>? endDate,
+    Expression<int>? timesPerWeek,
+    Expression<int>? preferredTimeMinutes,
     Expression<String>? priority,
     Expression<String>? soundId,
     Expression<bool>? vibrationEnabled,
@@ -836,10 +851,11 @@ class RemindersCompanion extends UpdateCompanion<ReminderRow> {
       if (description != null) 'description': description,
       if (category != null) 'category': category,
       if (type != null) 'type': type,
+      if (scheduleMode != null) 'schedule_mode': scheduleMode,
       if (scheduledAt != null) 'scheduled_at': scheduledAt,
-      if (repeatRule != null) 'repeat_rule': repeatRule,
-      if (repeatDays != null) 'repeat_days': repeatDays,
-      if (endDate != null) 'end_date': endDate,
+      if (timesPerWeek != null) 'times_per_week': timesPerWeek,
+      if (preferredTimeMinutes != null)
+        'preferred_time_minutes': preferredTimeMinutes,
       if (priority != null) 'priority': priority,
       if (soundId != null) 'sound_id': soundId,
       if (vibrationEnabled != null) 'vibration_enabled': vibrationEnabled,
@@ -858,10 +874,10 @@ class RemindersCompanion extends UpdateCompanion<ReminderRow> {
     Value<String?>? description,
     Value<String>? category,
     Value<String>? type,
-    Value<DateTime>? scheduledAt,
-    Value<String>? repeatRule,
-    Value<String?>? repeatDays,
-    Value<DateTime?>? endDate,
+    Value<String>? scheduleMode,
+    Value<DateTime?>? scheduledAt,
+    Value<int?>? timesPerWeek,
+    Value<int?>? preferredTimeMinutes,
     Value<String>? priority,
     Value<String?>? soundId,
     Value<bool>? vibrationEnabled,
@@ -878,10 +894,10 @@ class RemindersCompanion extends UpdateCompanion<ReminderRow> {
       description: description ?? this.description,
       category: category ?? this.category,
       type: type ?? this.type,
+      scheduleMode: scheduleMode ?? this.scheduleMode,
       scheduledAt: scheduledAt ?? this.scheduledAt,
-      repeatRule: repeatRule ?? this.repeatRule,
-      repeatDays: repeatDays ?? this.repeatDays,
-      endDate: endDate ?? this.endDate,
+      timesPerWeek: timesPerWeek ?? this.timesPerWeek,
+      preferredTimeMinutes: preferredTimeMinutes ?? this.preferredTimeMinutes,
       priority: priority ?? this.priority,
       soundId: soundId ?? this.soundId,
       vibrationEnabled: vibrationEnabled ?? this.vibrationEnabled,
@@ -912,17 +928,17 @@ class RemindersCompanion extends UpdateCompanion<ReminderRow> {
     if (type.present) {
       map['type'] = Variable<String>(type.value);
     }
+    if (scheduleMode.present) {
+      map['schedule_mode'] = Variable<String>(scheduleMode.value);
+    }
     if (scheduledAt.present) {
       map['scheduled_at'] = Variable<DateTime>(scheduledAt.value);
     }
-    if (repeatRule.present) {
-      map['repeat_rule'] = Variable<String>(repeatRule.value);
+    if (timesPerWeek.present) {
+      map['times_per_week'] = Variable<int>(timesPerWeek.value);
     }
-    if (repeatDays.present) {
-      map['repeat_days'] = Variable<String>(repeatDays.value);
-    }
-    if (endDate.present) {
-      map['end_date'] = Variable<DateTime>(endDate.value);
+    if (preferredTimeMinutes.present) {
+      map['preferred_time_minutes'] = Variable<int>(preferredTimeMinutes.value);
     }
     if (priority.present) {
       map['priority'] = Variable<String>(priority.value);
@@ -962,10 +978,10 @@ class RemindersCompanion extends UpdateCompanion<ReminderRow> {
           ..write('description: $description, ')
           ..write('category: $category, ')
           ..write('type: $type, ')
+          ..write('scheduleMode: $scheduleMode, ')
           ..write('scheduledAt: $scheduledAt, ')
-          ..write('repeatRule: $repeatRule, ')
-          ..write('repeatDays: $repeatDays, ')
-          ..write('endDate: $endDate, ')
+          ..write('timesPerWeek: $timesPerWeek, ')
+          ..write('preferredTimeMinutes: $preferredTimeMinutes, ')
           ..write('priority: $priority, ')
           ..write('soundId: $soundId, ')
           ..write('vibrationEnabled: $vibrationEnabled, ')
@@ -1206,10 +1222,10 @@ typedef $$RemindersTableCreateCompanionBuilder = RemindersCompanion Function({
   Value<String?> description,
   required String category,
   Value<String> type,
-  required DateTime scheduledAt,
-  Value<String> repeatRule,
-  Value<String?> repeatDays,
-  Value<DateTime?> endDate,
+  Value<String> scheduleMode,
+  Value<DateTime?> scheduledAt,
+  Value<int?> timesPerWeek,
+  Value<int?> preferredTimeMinutes,
   Value<String> priority,
   Value<String?> soundId,
   Value<bool> vibrationEnabled,
@@ -1226,10 +1242,10 @@ typedef $$RemindersTableUpdateCompanionBuilder = RemindersCompanion Function({
   Value<String?> description,
   Value<String> category,
   Value<String> type,
-  Value<DateTime> scheduledAt,
-  Value<String> repeatRule,
-  Value<String?> repeatDays,
-  Value<DateTime?> endDate,
+  Value<String> scheduleMode,
+  Value<DateTime?> scheduledAt,
+  Value<int?> timesPerWeek,
+  Value<int?> preferredTimeMinutes,
   Value<String> priority,
   Value<String?> soundId,
   Value<bool> vibrationEnabled,
@@ -1275,23 +1291,23 @@ class $$RemindersTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get scheduleMode => $composableBuilder(
+    column: $table.scheduleMode,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get scheduledAt => $composableBuilder(
     column: $table.scheduledAt,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get repeatRule => $composableBuilder(
-    column: $table.repeatRule,
+  ColumnFilters<int> get timesPerWeek => $composableBuilder(
+    column: $table.timesPerWeek,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get repeatDays => $composableBuilder(
-    column: $table.repeatDays,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get endDate => $composableBuilder(
-    column: $table.endDate,
+  ColumnFilters<int> get preferredTimeMinutes => $composableBuilder(
+    column: $table.preferredTimeMinutes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1370,23 +1386,23 @@ class $$RemindersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get scheduleMode => $composableBuilder(
+    column: $table.scheduleMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get scheduledAt => $composableBuilder(
     column: $table.scheduledAt,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get repeatRule => $composableBuilder(
-    column: $table.repeatRule,
+  ColumnOrderings<int> get timesPerWeek => $composableBuilder(
+    column: $table.timesPerWeek,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get repeatDays => $composableBuilder(
-    column: $table.repeatDays,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get endDate => $composableBuilder(
-    column: $table.endDate,
+  ColumnOrderings<int> get preferredTimeMinutes => $composableBuilder(
+    column: $table.preferredTimeMinutes,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -1457,23 +1473,25 @@ class $$RemindersTableAnnotationComposer
   GeneratedColumn<String> get type =>
       $composableBuilder(column: $table.type, builder: (column) => column);
 
+  GeneratedColumn<String> get scheduleMode => $composableBuilder(
+    column: $table.scheduleMode,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get scheduledAt => $composableBuilder(
     column: $table.scheduledAt,
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get repeatRule => $composableBuilder(
-    column: $table.repeatRule,
+  GeneratedColumn<int> get timesPerWeek => $composableBuilder(
+    column: $table.timesPerWeek,
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get repeatDays => $composableBuilder(
-    column: $table.repeatDays,
+  GeneratedColumn<int> get preferredTimeMinutes => $composableBuilder(
+    column: $table.preferredTimeMinutes,
     builder: (column) => column,
   );
-
-  GeneratedColumn<DateTime> get endDate =>
-      $composableBuilder(column: $table.endDate, builder: (column) => column);
 
   GeneratedColumn<String> get priority =>
       $composableBuilder(column: $table.priority, builder: (column) => column);
@@ -1544,10 +1562,10 @@ class $$RemindersTableTableManager
                 Value<String?> description = const Value.absent(),
                 Value<String> category = const Value.absent(),
                 Value<String> type = const Value.absent(),
-                Value<DateTime> scheduledAt = const Value.absent(),
-                Value<String> repeatRule = const Value.absent(),
-                Value<String?> repeatDays = const Value.absent(),
-                Value<DateTime?> endDate = const Value.absent(),
+                Value<String> scheduleMode = const Value.absent(),
+                Value<DateTime?> scheduledAt = const Value.absent(),
+                Value<int?> timesPerWeek = const Value.absent(),
+                Value<int?> preferredTimeMinutes = const Value.absent(),
                 Value<String> priority = const Value.absent(),
                 Value<String?> soundId = const Value.absent(),
                 Value<bool> vibrationEnabled = const Value.absent(),
@@ -1563,10 +1581,10 @@ class $$RemindersTableTableManager
                 description: description,
                 category: category,
                 type: type,
+                scheduleMode: scheduleMode,
                 scheduledAt: scheduledAt,
-                repeatRule: repeatRule,
-                repeatDays: repeatDays,
-                endDate: endDate,
+                timesPerWeek: timesPerWeek,
+                preferredTimeMinutes: preferredTimeMinutes,
                 priority: priority,
                 soundId: soundId,
                 vibrationEnabled: vibrationEnabled,
@@ -1584,10 +1602,10 @@ class $$RemindersTableTableManager
                 Value<String?> description = const Value.absent(),
                 required String category,
                 Value<String> type = const Value.absent(),
-                required DateTime scheduledAt,
-                Value<String> repeatRule = const Value.absent(),
-                Value<String?> repeatDays = const Value.absent(),
-                Value<DateTime?> endDate = const Value.absent(),
+                Value<String> scheduleMode = const Value.absent(),
+                Value<DateTime?> scheduledAt = const Value.absent(),
+                Value<int?> timesPerWeek = const Value.absent(),
+                Value<int?> preferredTimeMinutes = const Value.absent(),
                 Value<String> priority = const Value.absent(),
                 Value<String?> soundId = const Value.absent(),
                 Value<bool> vibrationEnabled = const Value.absent(),
@@ -1603,10 +1621,10 @@ class $$RemindersTableTableManager
                 description: description,
                 category: category,
                 type: type,
+                scheduleMode: scheduleMode,
                 scheduledAt: scheduledAt,
-                repeatRule: repeatRule,
-                repeatDays: repeatDays,
-                endDate: endDate,
+                timesPerWeek: timesPerWeek,
+                preferredTimeMinutes: preferredTimeMinutes,
                 priority: priority,
                 soundId: soundId,
                 vibrationEnabled: vibrationEnabled,

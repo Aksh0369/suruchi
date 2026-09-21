@@ -2,9 +2,18 @@ import 'reminder_category.dart';
 
 enum ReminderType { normal, alarm }
 
-enum RepeatRule { none, daily, weekly, custom }
-
 enum ReminderPriority { low, normal, high }
+
+/// How a task's reminder timing works — chosen once per task:
+///
+/// - [deadline]: a specific date+time to finish by. Reminders fire at
+///   -1hr, -30min, at the time, and +30min after (fixed, not configurable).
+/// - [recurring]: no specific deadline, just "I have to do this regularly".
+///   [timesPerWeek] reminders a week, at [preferredTimeMinutes] time of
+///   day; which days is decided automatically (not by the user).
+/// - [random]: exactly one nudge a week, on a random day and random time
+///   of day, repeating every week until the task is marked done.
+enum ScheduleMode { deadline, recurring, random }
 
 /// Plain domain model — the UI and business logic work with this, never
 /// with a Drift row directly, so the storage layer can change without
@@ -16,10 +25,10 @@ class Reminder {
     this.description,
     required this.category,
     this.type = ReminderType.normal,
-    required this.scheduledAt,
-    this.repeatRule = RepeatRule.none,
-    this.repeatDays,
-    this.endDate,
+    this.scheduleMode = ScheduleMode.deadline,
+    this.scheduledAt,
+    this.timesPerWeek,
+    this.preferredTimeMinutes,
     this.priority = ReminderPriority.normal,
     this.soundId,
     this.vibrationEnabled = true,
@@ -35,10 +44,16 @@ class Reminder {
   final String? description;
   final ReminderCategory category;
   final ReminderType type;
-  final DateTime scheduledAt;
-  final RepeatRule repeatRule;
-  final List<int>? repeatDays; // ISO weekday numbers, 1=Mon..7=Sun
-  final DateTime? endDate;
+
+  final ScheduleMode scheduleMode;
+  /// The deadline, when [scheduleMode] is [ScheduleMode.deadline]. Null
+  /// otherwise — recurring/random tasks have no single fixed instant.
+  final DateTime? scheduledAt;
+  /// How many times a week, when [scheduleMode] is [ScheduleMode.recurring].
+  final int? timesPerWeek;
+  /// Minutes since midnight, the recurring task's time of day.
+  final int? preferredTimeMinutes;
+
   final ReminderPriority priority;
   final String? soundId;
   final bool vibrationEnabled;
@@ -53,10 +68,10 @@ class Reminder {
     Object? description = _unset,
     ReminderCategory? category,
     ReminderType? type,
-    DateTime? scheduledAt,
-    RepeatRule? repeatRule,
-    Object? repeatDays = _unset,
-    Object? endDate = _unset,
+    ScheduleMode? scheduleMode,
+    Object? scheduledAt = _unset,
+    Object? timesPerWeek = _unset,
+    Object? preferredTimeMinutes = _unset,
     ReminderPriority? priority,
     Object? soundId = _unset,
     bool? vibrationEnabled,
@@ -71,10 +86,12 @@ class Reminder {
       description: description == _unset ? this.description : description as String?,
       category: category ?? this.category,
       type: type ?? this.type,
-      scheduledAt: scheduledAt ?? this.scheduledAt,
-      repeatRule: repeatRule ?? this.repeatRule,
-      repeatDays: repeatDays == _unset ? this.repeatDays : repeatDays as List<int>?,
-      endDate: endDate == _unset ? this.endDate : endDate as DateTime?,
+      scheduleMode: scheduleMode ?? this.scheduleMode,
+      scheduledAt: scheduledAt == _unset ? this.scheduledAt : scheduledAt as DateTime?,
+      timesPerWeek: timesPerWeek == _unset ? this.timesPerWeek : timesPerWeek as int?,
+      preferredTimeMinutes: preferredTimeMinutes == _unset
+          ? this.preferredTimeMinutes
+          : preferredTimeMinutes as int?,
       priority: priority ?? this.priority,
       soundId: soundId == _unset ? this.soundId : soundId as String?,
       vibrationEnabled: vibrationEnabled ?? this.vibrationEnabled,

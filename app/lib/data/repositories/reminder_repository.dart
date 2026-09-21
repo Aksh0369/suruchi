@@ -34,13 +34,14 @@ class ReminderRepository {
   }
 
   /// A blank reminder for [category] with sensible defaults, ready to be
-  /// customized in the Add Reminder sheet and passed to [upsert].
+  /// customized in the Add Task screen and passed to [upsert].
   Reminder buildDraft(ReminderCategory category) {
     final now = DateTime.now();
     return Reminder(
       id: _uuid.v4(),
       title: '',
       category: category,
+      scheduleMode: ScheduleMode.deadline,
       scheduledAt: DateTime(now.year, now.month, now.day, now.hour + 1),
       createdAt: now,
       updatedAt: now,
@@ -73,12 +74,10 @@ Reminder _toEntity(ReminderRow row) {
     description: row.description,
     category: ReminderCategory.values.byName(row.category),
     type: ReminderType.values.byName(row.type),
+    scheduleMode: ScheduleMode.values.byName(row.scheduleMode),
     scheduledAt: row.scheduledAt,
-    repeatRule: RepeatRule.values.byName(row.repeatRule),
-    repeatDays: row.repeatDays == null || row.repeatDays!.isEmpty
-        ? null
-        : row.repeatDays!.split(',').map(int.parse).toList(),
-    endDate: row.endDate,
+    timesPerWeek: row.timesPerWeek,
+    preferredTimeMinutes: row.preferredTimeMinutes,
     priority: ReminderPriority.values.byName(row.priority),
     soundId: row.soundId,
     vibrationEnabled: row.vibrationEnabled,
@@ -97,10 +96,10 @@ RemindersCompanion _toCompanion(Reminder r) {
     description: Value(r.description),
     category: r.category.name,
     type: Value(r.type.name),
-    scheduledAt: r.scheduledAt,
-    repeatRule: Value(r.repeatRule.name),
-    repeatDays: Value(r.repeatDays?.join(',')),
-    endDate: Value(r.endDate),
+    scheduleMode: Value(r.scheduleMode.name),
+    scheduledAt: Value(r.scheduledAt),
+    timesPerWeek: Value(r.timesPerWeek),
+    preferredTimeMinutes: Value(r.preferredTimeMinutes),
     priority: Value(r.priority.name),
     soundId: Value(r.soundId),
     vibrationEnabled: Value(r.vibrationEnabled),

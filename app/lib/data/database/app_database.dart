@@ -16,11 +16,14 @@ class Reminders extends Table {
   TextColumn get description => text().nullable()();
   TextColumn get category => text()(); // business | self | seva
   TextColumn get type => text().withDefault(const Constant('normal'))();
-  DateTimeColumn get scheduledAt => dateTime()();
-  TextColumn get repeatRule => text().withDefault(const Constant('none'))();
-  // Comma-separated ISO weekday numbers (1=Mon..7=Sun), only when repeatRule=weekly
-  TextColumn get repeatDays => text().nullable()();
-  DateTimeColumn get endDate => dateTime().nullable()();
+
+  // How this task's reminder timing works — see ScheduleMode in the domain
+  // entity. Only the columns relevant to the chosen mode are populated.
+  TextColumn get scheduleMode => text().withDefault(const Constant('deadline'))();
+  DateTimeColumn get scheduledAt => dateTime().nullable()(); // deadline mode
+  IntColumn get timesPerWeek => integer().nullable()(); // recurring mode
+  IntColumn get preferredTimeMinutes => integer().nullable()(); // recurring mode
+
   TextColumn get priority => text().withDefault(const Constant('normal'))();
   TextColumn get soundId => text().nullable()();
   BoolColumn get vibrationEnabled => boolean().withDefault(const Constant(true))();
@@ -50,7 +53,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -58,6 +61,14 @@ class AppDatabase extends _$AppDatabase {
     onUpgrade: (m, from, to) async {
       if (from < 2) {
         await m.createTable(appSettings);
+      }
+      if (from < 3) {
+        // Pre-release schema change (repeatRule/repeatDays/endDate replaced
+        // by scheduleMode/timesPerWeek/preferredTimeMinutes) — no real user
+        // data exists yet, so a clean recreate is simpler than a column
+        // migration.
+        await m.deleteTable(reminders.actualTableName);
+        await m.createTable(reminders);
       }
     },
   );

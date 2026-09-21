@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/database_provider.dart';
 import '../../domain/entities/reminder.dart';
 import '../../domain/entities/reminder_category.dart';
-import 'add_edit_reminder_sheet.dart';
 import 'reminder_providers.dart';
+import 'task_form_page.dart';
 
 class CategoryListScreen extends ConsumerWidget {
   const CategoryListScreen({super.key, required this.category});
@@ -32,7 +32,9 @@ class CategoryListScreen extends ConsumerWidget {
         data: (reminders) => _CategoryReminderList(category: category, reminders: reminders),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => showAddEditReminderSheet(context, category: category),
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => TaskFormPage(category: category)),
+        ),
         child: const Icon(Icons.add_rounded),
       ),
     );
@@ -52,11 +54,22 @@ class _CategoryReminderList extends StatelessWidget {
     final tomorrow = today.add(const Duration(days: 1));
 
     final completed = reminders.where((r) => r.isCompleted).toList();
+    // Recurring/random tasks have no single fixed instant, so they can't be
+    // placed in Today/Upcoming — they get their own section instead.
+    final ongoing = reminders
+        .where((r) => !r.isCompleted && r.scheduleMode != ScheduleMode.deadline)
+        .toList();
     final todayList = reminders
-        .where((r) => !r.isCompleted && r.scheduledAt.isBefore(tomorrow))
+        .where((r) =>
+            !r.isCompleted &&
+            r.scheduleMode == ScheduleMode.deadline &&
+            r.scheduledAt!.isBefore(tomorrow))
         .toList();
     final upcoming = reminders
-        .where((r) => !r.isCompleted && !r.scheduledAt.isBefore(tomorrow))
+        .where((r) =>
+            !r.isCompleted &&
+            r.scheduleMode == ScheduleMode.deadline &&
+            !r.scheduledAt!.isBefore(tomorrow))
         .toList();
 
     if (reminders.isEmpty) {
@@ -64,7 +77,7 @@ class _CategoryReminderList extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Text(
-            'No ${category.label.toLowerCase()} reminders yet.\nTap + to add one.',
+            'No ${category.label.toLowerCase()} tasks yet.\nTap + to add one.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -79,6 +92,7 @@ class _CategoryReminderList extends StatelessWidget {
       children: [
         if (todayList.isNotEmpty) ..._section(context, 'TODAY', todayList),
         if (upcoming.isNotEmpty) ..._section(context, 'UPCOMING', upcoming),
+        if (ongoing.isNotEmpty) ..._section(context, 'ONGOING', ongoing),
         if (completed.isNotEmpty) ..._section(context, 'COMPLETED', completed),
       ],
     );
@@ -107,11 +121,18 @@ class _ReminderTile extends ConsumerWidget {
 
   final Reminder reminder;
 
-  String get _time {
-    final hour = reminder.scheduledAt.hour % 12 == 0 ? 12 : reminder.scheduledAt.hour % 12;
-    final minute = reminder.scheduledAt.minute.toString().padLeft(2, '0');
-    final period = reminder.scheduledAt.hour < 12 ? 'AM' : 'PM';
-    return '$hour:$minute $period';
+  String get _subtitle {
+    switch (reminder.scheduleMode) {
+      case ScheduleMode.deadline:
+        return _formatTime(reminder.scheduledAt!);
+      case ScheduleMode.recurring:
+        final n = reminder.timesPerWeek ?? 1;
+        final mins = reminder.preferredTimeMinutes ?? 0;
+        final time = _formatTime(DateTime(2000, 1, 1, mins ~/ 60, mins % 60));
+        return '${n == 7 ? 'Every day' : '$n time${n > 1 ? 's' : ''}/week'} · $time';
+      case ScheduleMode.random:
+        return 'Random · once a week';
+    }
   }
 
   @override
@@ -121,10 +142,10 @@ class _ReminderTile extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
-        onTap: () => showAddEditReminderSheet(
-          context,
-          category: reminder.category,
-          existing: reminder,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => TaskFormPage(category: reminder.category, existing: reminder),
+          ),
         ),
         leading: Checkbox(
           value: reminder.isCompleted,
@@ -139,11 +160,18 @@ class _ReminderTile extends ConsumerWidget {
             color: reminder.isCompleted ? scheme.onSurfaceVariant : null,
           ),
         ),
-        subtitle: Text(_time),
+        subtitle: Text(_subtitle),
         trailing: reminder.type == ReminderType.alarm
             ? const Icon(Icons.alarm_rounded, size: 20)
             : null,
       ),
     );
   }
+}
+
+String _formatTime(DateTime dt) {
+  final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+  final minute = dt.minute.toString().padLeft(2, '0');
+  final period = dt.hour < 12 ? 'AM' : 'PM';
+  return '$hour:$minute $period';
 }

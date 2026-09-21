@@ -5,10 +5,9 @@ import '../../core/providers/database_provider.dart';
 import '../../domain/entities/reminder.dart';
 import '../../domain/entities/reminder_category.dart';
 import '../../shared/widgets/category_card.dart';
-import '../reminders/add_edit_reminder_sheet.dart';
-import '../reminders/add_reminder_page.dart';
 import '../reminders/category_list_screen.dart';
 import '../reminders/reminder_providers.dart';
+import '../reminders/task_form_page.dart';
 import '../settings/settings_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -39,9 +38,9 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  void _openAddReminderPage(BuildContext context, ReminderCategory category) {
+  void _openAddTaskPage(BuildContext context, ReminderCategory category) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => AddReminderPage(category: category)),
+      MaterialPageRoute(builder: (_) => TaskFormPage(category: category)),
     );
   }
 
@@ -50,7 +49,10 @@ class HomeScreen extends ConsumerWidget {
     final tomorrow = DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
     return all
         .where((r) =>
-            r.category == category && !r.isCompleted && r.scheduledAt.isBefore(tomorrow))
+            r.category == category &&
+            !r.isCompleted &&
+            r.scheduleMode == ScheduleMode.deadline &&
+            r.scheduledAt!.isBefore(tomorrow))
         .length;
   }
 
@@ -65,8 +67,12 @@ class HomeScreen extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, _) => Center(child: Text('Something went wrong: $err')),
           data: (all) {
-            final pending = all.where((r) => !r.isCompleted).toList()
-              ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+            // Only deadline-mode tasks have a single fixed instant to sort
+            // by — recurring/random tasks show in their category's list.
+            final pending = all
+                .where((r) => !r.isCompleted && r.scheduleMode == ScheduleMode.deadline)
+                .toList()
+              ..sort((a, b) => a.scheduledAt!.compareTo(b.scheduledAt!));
             final nextUp = pending.isEmpty ? null : pending.first;
             final upcoming = pending.skip(nextUp == null ? 0 : 1).take(4).toList();
 
@@ -103,7 +109,7 @@ class HomeScreen extends ConsumerWidget {
                         category: ReminderCategory.business,
                         todayCount: _todayCountFor(all, ReminderCategory.business),
                         onTap: () => _openCategory(context, ReminderCategory.business),
-                        onAddTap: () => _openAddReminderPage(context, ReminderCategory.business),
+                        onAddTap: () => _openAddTaskPage(context, ReminderCategory.business),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -112,7 +118,7 @@ class HomeScreen extends ConsumerWidget {
                         category: ReminderCategory.self,
                         todayCount: _todayCountFor(all, ReminderCategory.self),
                         onTap: () => _openCategory(context, ReminderCategory.self),
-                        onAddTap: () => _openAddReminderPage(context, ReminderCategory.self),
+                        onAddTap: () => _openAddTaskPage(context, ReminderCategory.self),
                       ),
                     ),
                   ],
@@ -122,7 +128,7 @@ class HomeScreen extends ConsumerWidget {
                   category: ReminderCategory.seva,
                   todayCount: _todayCountFor(all, ReminderCategory.seva),
                   onTap: () => _openCategory(context, ReminderCategory.seva),
-                  onAddTap: () => _openAddReminderPage(context, ReminderCategory.seva),
+                  onAddTap: () => _openAddTaskPage(context, ReminderCategory.seva),
                 ),
                 if (nextUp != null) ...[
                   const SizedBox(height: 28),
@@ -152,42 +158,6 @@ class HomeScreen extends ConsumerWidget {
           },
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showQuickAdd(context),
-        child: const Icon(Icons.add_rounded),
-      ),
-    );
-  }
-
-  void _showQuickAdd(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('What kind of reminder?', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 16),
-            for (final category in ReminderCategory.values)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(category.icon, color: category.color),
-                title: Text(category.label),
-                onTap: () {
-                  Navigator.of(sheetContext).pop();
-                  showAddEditReminderSheet(context, category: category);
-                },
-              ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -205,9 +175,10 @@ class _NextUpCard extends ConsumerWidget {
   final Reminder reminder;
 
   String get _time {
-    final hour = reminder.scheduledAt.hour % 12 == 0 ? 12 : reminder.scheduledAt.hour % 12;
-    final minute = reminder.scheduledAt.minute.toString().padLeft(2, '0');
-    final period = reminder.scheduledAt.hour < 12 ? 'AM' : 'PM';
+    final scheduledAt = reminder.scheduledAt!;
+    final hour = scheduledAt.hour % 12 == 0 ? 12 : scheduledAt.hour % 12;
+    final minute = scheduledAt.minute.toString().padLeft(2, '0');
+    final period = scheduledAt.hour < 12 ? 'AM' : 'PM';
     return '$hour:$minute $period';
   }
 
@@ -248,7 +219,7 @@ class _NextUpCard extends ConsumerWidget {
               onPressed: () {
                 final repo = ref.read(reminderRepositoryProvider);
                 repo.upsert(reminder.copyWith(
-                  scheduledAt: reminder.scheduledAt.add(Duration(minutes: reminder.snoozeMinutes)),
+                  scheduledAt: reminder.scheduledAt!.add(Duration(minutes: reminder.snoozeMinutes)),
                   updatedAt: DateTime.now(),
                 ));
               },
@@ -272,9 +243,10 @@ class _UpcomingRow extends StatelessWidget {
   final Reminder reminder;
 
   String get _time {
-    final hour = reminder.scheduledAt.hour % 12 == 0 ? 12 : reminder.scheduledAt.hour % 12;
-    final minute = reminder.scheduledAt.minute.toString().padLeft(2, '0');
-    final period = reminder.scheduledAt.hour < 12 ? 'AM' : 'PM';
+    final scheduledAt = reminder.scheduledAt!;
+    final hour = scheduledAt.hour % 12 == 0 ? 12 : scheduledAt.hour % 12;
+    final minute = scheduledAt.minute.toString().padLeft(2, '0');
+    final period = scheduledAt.hour < 12 ? 'AM' : 'PM';
     return '$hour:$minute $period';
   }
 
