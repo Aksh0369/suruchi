@@ -76,13 +76,15 @@ cloud connectivity.
 ## Cloud backend & sync (part of V1)
 
 Reference implementation: `C:\369dc` (Node + Express + PostgreSQL API on
-Render, Neon-hosted Postgres, JWT auth) — same account, same proven pattern,
-**separate repo and separate Neon database** (no data or table sharing with
-369dc).
+Render, Neon-hosted Postgres, JWT auth) — same backend pattern, **separate
+repo and separate database** (no data or table sharing with 369dc).
 
 - **Backend**: Node.js + Express, deployed on Render as its own web service.
-- **Database**: a new Neon Postgres project (free, no-expiry tier — not
-  Render's own Postgres, which expires after 30 days on the free plan).
+- **Database**: Supabase-hosted Postgres (chosen over Neon, which was the
+  original recommendation — functionally the same role: a managed Postgres
+  the Express backend connects to directly via `DATABASE_URL`, with its own
+  connection pool, same as 369dc). Supabase's other features (Auth,
+  client SDK, realtime) are intentionally unused — see Auth below.
 - **Auth**: two fixed accounts (owner + spouse), username + PIN login, JWT
   issued on login, stored on-device via `flutter_secure_storage`. No public
   sign-up, no OAuth — mirrors 369dc's owner/staff model.
@@ -138,7 +140,7 @@ devices without a separate tombstone table.
 | Local notifications | `flutter_local_notifications` | Channels, scheduling, action buttons |
 | Alarm scheduling | Native Kotlin (`AlarmManager`, `BroadcastReceiver`, `BootReceiver`) | Reliability Flutter-only scheduling can't guarantee across reboot/Doze |
 | Backend | Node.js + Express | Matches 369dc; team is already familiar with it |
-| Remote DB | Postgres via Neon | Free, no-expiry, matches 369dc's proven setup |
+| Remote DB | Postgres via Supabase | Managed Postgres; connected to directly via `DATABASE_URL`, same as 369dc's Neon setup |
 | Hosting | Render (existing account) | Same account as 369dc; new, separate service + repo |
 | Auth | JWT + PIN login | Matches 369dc's private owner/staff model; no OAuth needed for 2 known users |
 
@@ -180,7 +182,7 @@ world cause of missed alarms).
 ## Privacy
 
 No analytics, no ads, no third-party trackers. Data lives only in this app's
-own Neon database and the two devices' local stores — never shared with or
+own Supabase database and the two devices' local stores — never shared with or
 sold to anyone else. (This app is no longer offline-only, per explicit
 decision to add cloud sync in V1, but remains otherwise private/self-hosted.)
 
@@ -196,12 +198,15 @@ adding these later without a rewrite.
 
 Each phase must build/compile before the next starts.
 
-0. Repo scaffold (Flutter app + Node backend), theme, empty Home screen
-1. Backend: Express skeleton, Neon connection, migrations, auth (JWT+PIN),
-   health check — deployed to Render
-2. Flutter: Drift schema + repositories (local CRUD, no UI)
-3. Flutter: Home UI wired to real local data
-4. Flutter: Add/Edit bottom sheet + Category list (Today/Upcoming/Completed)
+0. ✅ Repo scaffold (Flutter app + Node backend), theme, empty Home screen
+1. ✅ Backend: Express skeleton, Postgres connection, migrations, auth
+   (JWT+PIN), health check — verified against Supabase; not yet deployed to
+   Render
+2. ✅ Flutter: Drift schema + repositories (local CRUD)
+3. ✅ Flutter: Home UI wired to real local data
+4. ✅ Flutter: Add/Edit bottom sheet + Category list (Today/Upcoming/Completed)
+   — plus Settings screen with Light/Dark/System theme override, done ahead
+   of schedule (originally phase 10)
 5. Normal-reminder notifications (channels, scheduling, Done/Snooze actions)
 6. Native alarm module (AlarmManager, BroadcastReceiver, BootReceiver)
 7. Alarm-style reminders + Wake Screen route
@@ -219,5 +224,7 @@ Each phase must build/compile before the next starts.
   3.47.4, JDK 17, Android SDK (platforms 35/36, build-tools) all installed
   and verified with a real `flutter build apk --debug`.
 - ~~GitHub repository~~ — done: https://github.com/Aksh0369/suruchi
-- Neon Postgres project + `DATABASE_URL` for the backend (pending — backend
-  runs fine against a local Postgres in the meantime)
+- ~~Supabase Postgres project + `DATABASE_URL`~~ — done: migrations applied,
+  seeded, and the full auth/sync flow verified live against it.
+- Render deployment of the backend (pending — backend runs fine locally
+  against Supabase in the meantime, via `npm run dev` in `server/`)
