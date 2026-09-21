@@ -14,7 +14,14 @@ class AppColors {
   static const selfSoft = Color(0xFFEEE7FC);
   static const selfSoftDark = Color(0xFF2A2148);
 
-  static const seva = Color(0xFFFF8F00);
+  static const seva = Color(0xFFFF9933);
   static const sevaSoft = Color(0xFFFFF1DB);
   static const sevaSoftDark = Color(0xFF4A3419);
+
+  // Brand neutral palette — drives the overall theme (backgrounds, cards,
+  // primary accent). Independent of the category colors above.
+  static const brandPrimary = Color(0xFF287094);
+  static const brandLightSurface = Color(0xFFD4D4CE);
+  static const brandLightBackground = Color(0xFFF6F6F6);
+  static const brandDarkBackground = Color(0xFF023246);
 }

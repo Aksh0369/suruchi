@@ -49,28 +49,19 @@ class _CategoryReminderList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final tomorrow = today.add(const Duration(days: 1));
-
+    // One combined "To do" list — deadline tasks soonest-first, then
+    // recurring/random tasks (which have no single instant to sort by)
+    // after — then everything finished, in a separate Completed section.
+    final todo = reminders.where((r) => !r.isCompleted).toList()
+      ..sort((a, b) {
+        final aTime = a.scheduleMode == ScheduleMode.deadline ? a.scheduledAt : null;
+        final bTime = b.scheduleMode == ScheduleMode.deadline ? b.scheduledAt : null;
+        if (aTime == null && bTime == null) return 0;
+        if (aTime == null) return 1;
+        if (bTime == null) return -1;
+        return aTime.compareTo(bTime);
+      });
     final completed = reminders.where((r) => r.isCompleted).toList();
-    // Recurring/random tasks have no single fixed instant, so they can't be
-    // placed in Today/Upcoming — they get their own section instead.
-    final ongoing = reminders
-        .where((r) => !r.isCompleted && r.scheduleMode != ScheduleMode.deadline)
-        .toList();
-    final todayList = reminders
-        .where((r) =>
-            !r.isCompleted &&
-            r.scheduleMode == ScheduleMode.deadline &&
-            r.scheduledAt!.isBefore(tomorrow))
-        .toList();
-    final upcoming = reminders
-        .where((r) =>
-            !r.isCompleted &&
-            r.scheduleMode == ScheduleMode.deadline &&
-            !r.scheduledAt!.isBefore(tomorrow))
-        .toList();
 
     if (reminders.isEmpty) {
       return Center(
@@ -90,10 +81,8 @@ class _CategoryReminderList extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
       children: [
-        if (todayList.isNotEmpty) ..._section(context, 'TODAY', todayList),
-        if (upcoming.isNotEmpty) ..._section(context, 'UPCOMING', upcoming),
-        if (ongoing.isNotEmpty) ..._section(context, 'ONGOING', ongoing),
-        if (completed.isNotEmpty) ..._section(context, 'COMPLETED', completed),
+        if (todo.isNotEmpty) ..._section(context, 'To do', todo),
+        if (completed.isNotEmpty) ..._section(context, 'Completed', completed),
       ],
     );
   }
@@ -101,17 +90,16 @@ class _CategoryReminderList extends StatelessWidget {
   List<Widget> _section(BuildContext context, String title, List<Reminder> items) {
     return [
       Padding(
-        padding: const EdgeInsets.only(bottom: 8, top: 8),
+        padding: const EdgeInsets.only(bottom: 10, top: 8),
         child: Text(
           title,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-            letterSpacing: 1.1,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
       ...items.map((r) => _ReminderTile(reminder: r)),
-      const SizedBox(height: 12),
+      const SizedBox(height: 16),
     ];
   }
 }
@@ -142,6 +130,7 @@ class _ReminderTile extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => TaskFormPage(category: reminder.category, existing: reminder),
@@ -155,12 +144,17 @@ class _ReminderTile extends ConsumerWidget {
         ),
         title: Text(
           reminder.title,
-          style: TextStyle(
-            decoration: reminder.isCompleted ? TextDecoration.lineThrough : null,
-            color: reminder.isCompleted ? scheme.onSurfaceVariant : null,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: reminder.isCompleted ? scheme.onSurfaceVariant : scheme.onSurface,
           ),
         ),
-        subtitle: Text(_subtitle),
+        subtitle: Text(
+          _subtitle,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
         trailing: reminder.type == ReminderType.alarm
             ? const Icon(Icons.alarm_rounded, size: 20)
             : null,

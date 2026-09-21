@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'app_colors.dart';
+
 class AppTheme {
   AppTheme._();
 
@@ -7,9 +9,15 @@ class AppTheme {
   static ThemeData get dark => _build(Brightness.dark);
 
   static ThemeData _build(Brightness brightness) {
+    final isLight = brightness == Brightness.light;
+
     final scheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF3D5AFE),
+      seedColor: AppColors.brandPrimary,
       brightness: brightness,
+    ).copyWith(
+      primary: AppColors.brandPrimary,
+      surface: isLight ? AppColors.brandLightBackground : AppColors.brandDarkBackground,
+      surfaceContainerHigh: isLight ? AppColors.brandLightSurface : null,
     );
 
     return ThemeData(
