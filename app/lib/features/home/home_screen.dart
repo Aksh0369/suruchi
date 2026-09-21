@@ -6,6 +6,7 @@ import '../../domain/entities/reminder.dart';
 import '../../domain/entities/reminder_category.dart';
 import '../../shared/widgets/category_card.dart';
 import '../reminders/add_edit_reminder_sheet.dart';
+import '../reminders/add_reminder_page.dart';
 import '../reminders/category_list_screen.dart';
 import '../reminders/reminder_providers.dart';
 import '../settings/settings_screen.dart';
@@ -35,6 +36,12 @@ class HomeScreen extends ConsumerWidget {
   void _openCategory(BuildContext context, ReminderCategory category) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => CategoryListScreen(category: category)),
+    );
+  }
+
+  void _openAddReminderPage(BuildContext context, ReminderCategory category) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => AddReminderPage(category: category)),
     );
   }
 
@@ -96,6 +103,7 @@ class HomeScreen extends ConsumerWidget {
                         category: ReminderCategory.business,
                         todayCount: _todayCountFor(all, ReminderCategory.business),
                         onTap: () => _openCategory(context, ReminderCategory.business),
+                        onAddTap: () => _openAddReminderPage(context, ReminderCategory.business),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -104,6 +112,7 @@ class HomeScreen extends ConsumerWidget {
                         category: ReminderCategory.self,
                         todayCount: _todayCountFor(all, ReminderCategory.self),
                         onTap: () => _openCategory(context, ReminderCategory.self),
+                        onAddTap: () => _openAddReminderPage(context, ReminderCategory.self),
                       ),
                     ),
                   ],
@@ -113,6 +122,7 @@ class HomeScreen extends ConsumerWidget {
                   category: ReminderCategory.seva,
                   todayCount: _todayCountFor(all, ReminderCategory.seva),
                   onTap: () => _openCategory(context, ReminderCategory.seva),
+                  onAddTap: () => _openAddReminderPage(context, ReminderCategory.seva),
                 ),
                 if (nextUp != null) ...[
                   const SizedBox(height: 28),
